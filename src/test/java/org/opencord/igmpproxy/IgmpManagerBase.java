@@ -84,6 +84,7 @@ public class IgmpManagerBase {
     // Device configuration
     protected static final DeviceId DEVICE_ID_OF_A = DeviceId.deviceId("of:1");
     protected static final DeviceId DEVICE_ID_OF_B = DeviceId.deviceId("of:2");
+    protected static final DeviceId DEVICE_ID_OF_C = DeviceId.deviceId("of:00000000000000003");
 
     //Multicast ip address
     protected static final Ip4Address GROUP_IP = Ip4Address.valueOf("224.0.0.0");
@@ -97,11 +98,13 @@ public class IgmpManagerBase {
     // Uplink ports for two olts A and B
     protected static final PortNumber PORT_A = PortNumber.portNumber(1);
     protected static final PortNumber PORT_B = PortNumber.portNumber(2);
+    protected static final PortNumber PORT_C = PortNumber.portNumber(3);
     protected static final PortNumber PORT_NNI = PortNumber.portNumber(65536);
 
     // Connect Point mode for two olts
     protected static final ConnectPoint CONNECT_POINT_A = new ConnectPoint(DEVICE_ID_OF_A, PORT_A);
     protected static final ConnectPoint CONNECT_POINT_B = new ConnectPoint(DEVICE_ID_OF_B, PORT_B);
+    protected static final ConnectPoint CONNECT_POINT_C = new ConnectPoint(DEVICE_ID_OF_C, PORT_C);
 
     protected static final String CLIENT_NAS_PORT_ID = "PON 1/1";
     protected static final String CLIENT_CIRCUIT_ID = "CIR-PON 1/1";
@@ -112,6 +115,7 @@ public class IgmpManagerBase {
     private static final String NNI_PREFIX = "nni";
 
     protected List<Port> lsPorts = new ArrayList<Port>();
+    protected List<Device> lsDevices = new ArrayList<Device>();
     // Flag for adding two different devices in oltData
     protected boolean flagForDevice = true;
     PacketContext context;
@@ -146,6 +150,17 @@ public class IgmpManagerBase {
         @Override
         public List<Port> getPorts(DeviceId deviceId) {
             return lsPorts;
+        }
+
+        @Override
+        public Iterable<Device> getAvailableDevices() {
+            DefaultAnnotations.Builder annotationsBuilder = DefaultAnnotations.builder()
+                    .set(AnnotationKeys.MANAGEMENT_ADDRESS, SOURCE_IP_OF_A.toString());
+            SparseAnnotations annotations = annotationsBuilder.build();
+            Annotations[] da = {annotations };
+            Device deviceA = new DefaultDevice(null, DEVICE_ID_OF_C, Device.Type.OTHER, "", "", "", "", null, da);
+            lsDevices.add(deviceA);
+            return lsDevices;
         }
 
         @Override
@@ -425,6 +440,16 @@ public class IgmpManagerBase {
             }
         }
 
+   }
+
+   void sendQueryPacket(Ethernet reply) {
+
+       final ByteBuffer byteBuffer = ByteBuffer.wrap(reply.serialize());
+
+           InboundPacket inBoundPacket = new DefaultInboundPacket(COMMON_CONNECT_POINT, reply, byteBuffer);
+           context = new TestPacketContext(127L, inBoundPacket, null, false);
+
+           packetProcessor.process(context);
    }
 
     protected class MockSadisService implements SadisService {
